@@ -1,0 +1,3 @@
+{
+ "note": "BrandDoc hosts no client data. The brand and the decision log travel inside each document as a custom XML part (urn:sharpslide:branddoc:1). This file is kept only so the design preview has something to render."
+}

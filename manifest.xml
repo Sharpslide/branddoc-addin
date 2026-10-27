@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  BrandDoc task pane for Word.
+
+  To install on a Mac: copy this one file into
+      ~/Library/Containers/com.microsoft.Word/Data/Documents/wef
+  (Finder > Go > Go to Folder, create the wef folder if it isn't there), restart Word, then
+  Home > Add-ins > BrandDoc. No Terminal, no store submission.
+
+  SourceLocation below has to point at wherever the task pane is served from. It is the one
+  value that changes between hosts.
+-->
+<OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
+           xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides"
+           xsi:type="TaskPaneApp">
+  <Id>cd207eb2-1d1e-4b12-8c7a-c60acad29454</Id>
+  <Version>0.1.0.0</Version>
+  <ProviderName>Sharp Slide</ProviderName>
+  <DefaultLocale>en-US</DefaultLocale>
+  <DisplayName DefaultValue="BrandDoc"/>
+  <Description DefaultValue="Applies a client's brand styles to a Word document, shows why the engine formatted something the way it did, and records corrections."/>
+  <IconUrl DefaultValue="https://sharpslide.github.io/branddoc-addin/assets/icon-32.png"/>
+  <HighResolutionIconUrl DefaultValue="https://sharpslide.github.io/branddoc-addin/assets/icon-64.png"/>
+  <SupportUrl DefaultValue="https://sharpslide.github.io/branddoc-addin/"/>
+  <AppDomains>
+    <AppDomain>https://sharpslide.github.io</AppDomain>
+  </AppDomains>
+  <Hosts>
+    <Host Name="Document"/>
+  </Hosts>
+  <Requirements>
+    <Sets DefaultMinVersion="1.3">
+      <Set Name="WordApi" MinVersion="1.3"/>
+    </Sets>
+  </Requirements>
+  <DefaultSettings>
+    <SourceLocation DefaultValue="https://sharpslide.github.io/branddoc-addin/taskpane.html"/>
+  </DefaultSettings>
+  <Permissions>ReadWriteDocument</Permissions>
+</OfficeApp>

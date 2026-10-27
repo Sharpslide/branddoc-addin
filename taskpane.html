@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BrandDoc</title>
+<link rel="stylesheet" href="taskpane.css">
+<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+</head>
+<body>
+
+<header>
+  <h1>BrandDoc</h1>
+  <p class="client" id="client">O’Connor Capital Partners</p>
+</header>
+
+<div id="support" class="notice" hidden></div>
+
+<section>
+  <h2>Brand</h2>
+  <div id="palette" class="swatches"></div>
+  <dl id="fonts" class="fonts"></dl>
+</section>
+
+<section>
+  <h2>Apply</h2>
+  <p class="hint">Writes the brand's styles into this document. Existing styles are redefined;
+    missing ones are created. Your text is not touched.</p>
+  <button id="apply" class="primary">Apply brand to this document</button>
+  <div id="applyResult" class="result" hidden></div>
+</section>
+
+<section>
+  <h2>Why this?</h2>
+  <p class="hint">Put the cursor in a paragraph and ask. If the engine formatted this document,
+    it will say what it decided and why.</p>
+  <button id="inspect">What is this?</button>
+  <div id="inspectResult" class="result" hidden></div>
+</section>
+
+<section id="correctSection" hidden>
+  <h2>Correct it</h2>
+  <label for="newRole">This should be</label>
+  <select id="newRole"></select>
+  <label for="scope">How far does this go?</label>
+  <select id="scope">
+    <option value="exception">Just here — a one-off in this document</option>
+    <option value="profile">Always in PPMs</option>
+    <option value="brand">Always for O’Connor</option>
+    <option value="core">Always, in every document</option>
+  </select>
+  <label for="because">Because <span class="opt">(optional, but it becomes the rule)</span></label>
+  <textarea id="because" rows="3" placeholder="e.g. a line in capitals above a table is a table title only when the table follows immediately"></textarea>
+  <button id="record" class="primary">Record this correction</button>
+  <div id="recordResult" class="result" hidden></div>
+</section>
+
+<section>
+  <h2>Corrections recorded</h2>
+  <p class="hint">Kept with this document until they are folded into the rules. Each one shows
+    where it would apply.</p>
+  <ol id="log" class="log"><li class="empty">None yet.</li></ol>
+  <button id="copyLog">Copy all as text</button>
+</section>
+
+<footer>
+  <p>Prototype. The engine still runs outside Word; this panel reads and writes the styles and
+    keeps your corrections.</p>
+</footer>
+
+<script src="taskpane.js"></script>
+</body>
+</html>

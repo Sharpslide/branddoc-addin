@@ -1,0 +1,93 @@
+/* The task pane borrows the document's own palette and voice: tracked caps for labels,
+   Light Gray hairlines between blocks, Blue for anything active. */
+:root {
+  --black: #1A1A1A;
+  --blue: #3A6682;
+  --gray: #707070;
+  --lblue: #CFDAE0;
+  --lgray: #D9D9D9;
+  --xlgray: #EDEDED;
+  --bg: #FFFFFF;
+  --sans: "Bahnschrift SemiLight", "Bahnschrift", -apple-system, "Segoe UI", system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 0 16px 24px;
+  background: var(--bg);
+  color: var(--black);
+  font: 13px/1.45 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+header { padding: 18px 0 14px; border-bottom: 2px solid var(--lgray); }
+h1 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; color: var(--blue); }
+.client { margin: 4px 0 0; font-size: 12px; color: var(--gray); }
+
+section { padding: 18px 0; border-bottom: 1px solid var(--lgray); }
+section:last-of-type { border-bottom: 0; }
+
+h2 { margin: 0 0 8px; font-size: 11px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: var(--blue); }
+
+.hint { margin: 0 0 12px; font-size: 12px; color: var(--gray); }
+
+/* ---------------------------------------------------------------- brand */
+.swatches { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 14px; }
+.swatch { text-align: center; }
+.chip { height: 30px; border: 1px solid var(--lgray); border-radius: 2px; }
+.swatch span { display: block; margin-top: 4px; font-size: 9px; letter-spacing: .06em; color: var(--gray); overflow-wrap: anywhere; }
+
+.fonts { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 12px; }
+.fonts dt { color: var(--gray); }
+.fonts dd { margin: 0; }
+
+/* ---------------------------------------------------------------- controls */
+button {
+  width: 100%; padding: 9px 12px; margin-top: 4px;
+  font: inherit; font-size: 12px; letter-spacing: .04em;
+  color: var(--black); background: var(--bg);
+  border: 1px solid var(--blue); border-radius: 2px; cursor: pointer;
+}
+button:hover { background: var(--xlgray); }
+button.primary { color: #fff; background: var(--blue); }
+button.primary:hover { background: #2E5470; }
+button:disabled { opacity: .5; cursor: default; }
+
+label { display: block; margin: 12px 0 4px; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--gray); }
+label .opt { text-transform: none; letter-spacing: 0; }
+select, textarea {
+  width: 100%; padding: 7px 8px; font: inherit; font-size: 12px;
+  color: var(--black); background: var(--bg);
+  border: 1px solid var(--lgray); border-radius: 2px;
+}
+textarea { resize: vertical; }
+
+/* ---------------------------------------------------------------- results */
+.result { margin-top: 12px; padding: 10px 12px; font-size: 12px; background: var(--xlgray); border-left: 2px solid var(--blue); }
+.result h3 { margin: 0 0 6px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--blue); }
+.result p { margin: 0 0 6px; }
+.result p:last-child { margin-bottom: 0; }
+.result .quiet { color: var(--gray); }
+.result ul { margin: 6px 0 0; padding-left: 16px; }
+.result li { margin-bottom: 3px; }
+
+.notice { margin: 14px 0 0; padding: 10px 12px; font-size: 12px; background: #FBF4E6; border-left: 2px solid #B8860B; }
+
+.log { margin: 0; padding-left: 18px; font-size: 12px; }
+.log li { margin-bottom: 8px; }
+.log .empty { list-style: none; margin-left: -18px; color: var(--gray); }
+.log .where { color: var(--gray); font-size: 11px; }
+
+footer { padding-top: 16px; font-size: 11px; color: var(--gray); }
+footer p { margin: 0; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1A1A1A; --black: #EDEDED; --gray: #9AA7AE;
+    --lgray: #3A4147; --xlgray: #24292E; --blue: #8FB3C7;
+  }
+  :root:not([data-theme="light"]) .notice { background: #2B2415; }
+  :root:not([data-theme="light"]) button.primary { color: #10202B; }
+}
