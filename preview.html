@@ -71,6 +71,15 @@ window.Word = {
 </section>
 
 <section>
+  <h2>Design</h2>
+  <p class="hint">Reads the draft, works out what every paragraph is, and sets the style that
+    carries it. It shows you the plan first, and nothing changes until you say so. Your words are
+    not rewritten.</p>
+  <button id="design">Design this document</button>
+  <div id="designResult" class="result" hidden></div>
+</section>
+
+<section>
   <h2>Why this?</h2>
   <p class="hint">Put the cursor in a paragraph and ask. If the engine formatted this document,
     it will say what it decided and why.</p>
@@ -108,6 +117,9 @@ window.Word = {
     keeps your corrections.</p>
 </footer>
 
+<script src="engine/blocks.js"></script>
+<script src="engine/classify.js"></script>
+<script src="engine/apply.js"></script>
 <script src="taskpane.js"></script>
 </body>
 </html>

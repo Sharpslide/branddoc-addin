@@ -48,7 +48,8 @@ Office.onReady(async (info) => {
   reportSupport();
   try {
     BRAND = await loadBrand();
-    $('client').textContent = BRAND.client + (BRAND.profile ? ` \u00b7 ${BRAND.profile}` : '');
+    $('client').textContent = BRAND.client + (BRAND.profile ? ` \u00b7 ${BRAND.profile}` : '')
+      + (BRAND.fromAddIn ? ' \u00b7 not yet in this document' : '');
     if (BRAND.profile) {
       const opt = document.querySelector('#scope option[value="profile"]');
       if (opt) opt.textContent = `Always in ${BRAND.profile} documents`;
@@ -64,6 +65,7 @@ Office.onReady(async (info) => {
       `<p class="quiet">${esc(e.message)}</p>`);
   }
   $('apply').onclick = applyBrand;
+  if ($('design')) $('design').onclick = design;
   $('inspect').onclick = inspect;
   $('record').onclick = record;
   $('copyLog').onclick = copyLog;
@@ -72,6 +74,21 @@ Office.onReady(async (info) => {
 
 /* The brand and the reasoning come out of the document's own custom XML part. */
 async function loadBrand() {
+  try {
+    return await brandFromDocument();
+  } catch (e) {
+    // A draft the engine has not built carries no part. Fall back to the brand bundled with the
+    // add-in so the pane is useful on an unformatted document, and say which one is in play.
+    const res = await fetch('brand.json', { cache: 'no-store' });
+    if (!res.ok) throw e;
+    const b = await res.json();
+    if (!b || !b.styles) throw e;
+    b.fromAddIn = true;
+    return b;
+  }
+}
+
+async function brandFromDocument() {
   let xml = null;
   await Word.run(async (context) => {
     const parts = context.document.customXmlParts.getByNamespace(NS);
@@ -207,6 +224,94 @@ function applyPara(style, rec, skipped) {
   if (rec.borders && rec.borders.length && !SUPPORT.borders) {
     skipped.add('rules above and below the lead paragraph (style borders)');
   }
+}
+
+/* ------------------------------------------------------------------ design */
+/* Read the draft, decide what each paragraph is, set the style that carries it. The reading is
+   engine/classify.js, verified block for block against the Python engine; the mapping from a role
+   to a style is engine/apply.js. Shown as a plan first, because a formatting pass over someone
+   else's document should never be a surprise. */
+let PLAN = null;
+
+async function design() {
+  const btn = $('design');
+  btn.disabled = true;
+  btn.textContent = 'Reading\u2026';
+  try {
+    await Word.run(async (context) => {
+      const blocks = await BrandDocBlocks.fromDocument(context);
+      const reading = (BRAND && BRAND.reading) || BrandDocClassify.NEUTRAL;
+      const roles = BrandDocClassify.classify('', blocks, reading, { index: true });
+      BrandDocClassify.structure(roles, reading);
+      BrandDocClassify.addLeads(roles, reading);
+      PLAN = BrandDocApply.plan(blocks, roles);
+      showPlan(blocks);
+    });
+  } catch (e) {
+    show('designResult', 'Could not read this document', `<p>${esc(e.message)}</p>`);
+  }
+  btn.disabled = false;
+  btn.textContent = 'Design this document';
+}
+
+function tally(list, key) {
+  const c = {};
+  for (const x of list) c[x[key]] = (c[x[key]] || 0) + 1;
+  return Object.entries(c).sort((a, b) => b[1] - a[1]);
+}
+
+function showPlan(blocks) {
+  const byStyle = tally(PLAN.steps, 'style');
+  const byRole = tally(PLAN.unplaced, 'role');
+  const judged = PLAN.steps.filter((s) => s.confidence === 'judgement').length;
+
+  let html = `<p><strong>${PLAN.steps.length} of ${blocks.length} blocks would be styled.</strong>`
+    + ` ${PLAN.paragraphs} paragraphs in the document.</p>`;
+  html += '<ul>' + byStyle.map(([k, v]) => `<li>${v} &times; ${esc(k)}</li>`).join('') + '</ul>';
+  if (judged) {
+    html += `<p class="quiet">${judged} of these are judgement calls rather than rules. `
+      + 'Ask "Why this?" on any paragraph afterwards and it will say which.</p>';
+  }
+  if (byRole.length) {
+    html += '<p class="quiet">Left alone, because a paragraph style cannot carry them:</p><ul>'
+      + byRole.map(([k, v]) => `<li>${v} &times; ${esc(k)} \u2014 ${esc(BrandDocApply.NEEDS_ENGINE[k] || 'no style mapped')}</li>`).join('')
+      + '</ul>';
+  }
+  if (BRAND && BRAND.fromAddIn) {
+    html += '<p class="quiet">The styles themselves are not in this document yet. '
+      + 'Apply the brand first, or this will have nothing to set.</p>';
+  }
+  html += '<button id="designGo" class="primary">Set these styles</button>';
+  show('designResult', 'The plan', html);
+  $('designGo').onclick = designGo;
+}
+
+async function designGo() {
+  if (!PLAN) return;
+  const go = $('designGo');
+  go.disabled = true;
+  go.textContent = 'Setting\u2026';
+  let result = null;
+  try {
+    await Word.run(async (context) => {
+      result = await BrandDocApply.apply(context, PLAN.steps, {
+        Word: Word,
+        onProgress: (done, total) => { go.textContent = `Setting\u2026 ${done} of ${total}`; },
+      });
+    });
+  } catch (e) {
+    show('designResult', 'Stopped', `<p>${esc(e.message)}</p>`);
+    return;
+  }
+  let html = `<p><strong>${result.applied.length} paragraphs styled.</strong></p>`;
+  if (result.failed.length) {
+    const why = tally(result.failed, 'error');
+    html += `<p class="quiet">${result.failed.length} could not be set:</p><ul>`
+      + why.map(([k, v]) => `<li>${v} &times; ${esc(k)}</li>`).join('') + '</ul>'
+      + '<p class="quiet">A style that is missing has to be created first \u2014 that is what '
+      + 'Apply does.</p>';
+  }
+  show('designResult', 'Done', html);
 }
 
 /* ------------------------------------------------------------------ inspect */
