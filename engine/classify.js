@@ -95,10 +95,17 @@
     return 0;
   }
 
-  function classify(sec, blocks, profile) {
+  /* `opts.index` attaches _i, the block the role came from, so the pane can map a role back to
+   * the paragraph in Word it belongs to — classify drops blocks (blank paragraphs, the title
+   * block, repeated "continued" headings) and the position would otherwise be lost. Off by
+   * default, so the output stays byte-comparable with the engine's.
+   */
+  function classify(sec, blocks, profile, opts) {
     const P = asProfile(profile);
     const tc = t => titlecase(t, P.acronyms);
+    const keepIndex = !!(opts && opts.index);
     const out = [];
+    const push = (i, d) => { if (keepIndex) d._i = i; out.push(d); return d; };
     let firstStyled = blocks.length;
     for (let k = 0; k < blocks.length; k++) {
       const q = blocks[k];
@@ -107,7 +114,7 @@
     for (let i = 0; i < blocks.length; i++) {
       const b = blocks[i];
       if (b.kind === 'table') {
-        out.push(attach({ role: 'table', rows: b.rows }, 'A table in the draft stays a table.'));
+        push(i, attach({ role: 'table', rows: b.rows }, 'A table in the draft stays a table.'));
         continue;
       }
       const t = b.text.trim();
@@ -122,7 +129,7 @@
       }
       if (st === 'Heading1') {
         if (P.sectionNames.has(t.toUpperCase())) {
-          out.push(attach({ role: 'sectiontitle', text: tc(t), num: sec },
+          push(i, attach({ role: 'sectiontitle', text: tc(t), num: sec },
             'A Heading 1 carrying the section’s own name, so it becomes the section title '
             + 'page rather than a heading inside it.'));
         } else if (t.toUpperCase().indexOf('(CONT') !== -1) {
@@ -130,7 +137,7 @@
             + 'the formatted document repeats nothing across pages.', 'D4');
           continue;
         } else {
-          out.push(attach({ role: 'part', text: t },
+          push(i, attach({ role: 'part', text: t },
             'A Heading 1 that is not the section’s own name, so it divides the section '
             + 'rather than opening it.'));
         }
@@ -139,7 +146,7 @@
       const fns = (b.runs || []).filter(r => 'fn' in r).map(r => r.fn);
       if (st === 'Heading2') {
         const numbered = /^\d+\.\s/.test(t);
-        out.push(attach({ role: numbered ? 'h3' : 'h2', text: tc(t), fns: fns },
+        push(i, attach({ role: numbered ? 'h3' : 'h2', text: tc(t), fns: fns },
           numbered
             ? 'Numbered, so it sits one level below the unnumbered Heading 2s around it.'
             : 'A Heading 2 in the draft, kept at that level.',
@@ -147,48 +154,48 @@
         continue;
       }
       if (st === 'Heading3') {
-        out.push(attach({ role: 'h4', text: tc(t), fns: fns },
+        push(i, attach({ role: 'h4', text: tc(t), fns: fns },
           'A Heading 3 in the draft, which the profile sets as its fourth level.'));
         continue;
       }
       if (isCaption(b)) {
         const m = /^\s*Exhibit\s+(\d+)\s*[—–-]\s*([\s\S]*)$/.exec(t);
-        out.push(attach({ role: 'caption', n: parseInt(m[1], 10), text: m[2] },
+        push(i, attach({ role: 'caption', n: parseInt(m[1], 10), text: m[2] },
           'Opens “Exhibit N —”, which is how this author marks a figure caption.'));
         continue;
       }
       if (hasImg(b)) {
-        out.push(attach({ role: 'exhibit' },
+        push(i, attach({ role: 'exhibit' },
           'Carries a picture, so this paragraph is the exhibit itself.'));
         continue;
       }
       if (isSource(b)) {
-        out.push(attach({ role: 'source', text: t },
+        push(i, attach({ role: 'source', text: t },
           'Opens “Source:”, so it credits the exhibit above it.'));
         continue;
       }
       if (t.indexOf('•') === 0) {
-        out.push(attach({ role: 'bullet', runs: b.runs, strip_bullet: true },
+        push(i, attach({ role: 'bullet', runs: b.runs, strip_bullet: true },
           'Typed with a bullet character rather than using a list style. Becomes a real list '
           + 'item and the typed bullet comes off.'));
         continue;
       }
       if (b.num) {
-        out.push(attach({ role: 'listnum', runs: b.runs, runin: runinSplit(b) },
+        push(i, attach({ role: 'listnum', runs: b.runs, runin: runinSplit(b) },
           'The draft numbered it, so it becomes a numbered list item.'));
         continue;
       }
       // a bold all-caps line on its own is a table title in the client's drafts
       const inked = (b.runs || []).filter(r => txtOf(r).trim());
       if (t === t.toUpperCase() && t.length < 60 && inked.every(r => !!r.b)) {
-        out.push(attach({ role: 'tabletitle', text: tc(t), runs: b.runs },
+        push(i, attach({ role: 'tabletitle', text: tc(t), runs: b.runs },
           'A short bold line in capitals, standing alone. In this author’s drafts that marks '
           + 'the title of the table below it — but nothing says so, and a heading can look '
           + 'exactly the same.',
           null, ['h2', 'h4', 'body'], 'judgement'));
         continue;
       }
-      out.push(attach({ role: 'body', runs: b.runs, runin: runinSplit(b) },
+      push(i, attach({ role: 'body', runs: b.runs, runin: runinSplit(b) },
         'Nothing marks it as anything else, so it is running text.'));
     }
     return out;
