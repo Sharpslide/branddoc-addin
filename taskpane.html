@@ -18,8 +18,16 @@
 
 <section>
   <h2>Brand</h2>
+  <p id="brandSource" class="hint"></p>
   <div id="palette" class="swatches"></div>
   <dl id="fonts" class="fonts"></dl>
+  <div id="brandLoad">
+    <label for="brandFile" class="hint">Load a brand file. This add-in remembers it on this Mac,
+      so you only do it once.</label>
+    <input type="file" id="brandFile" accept="application/json,.json">
+  </div>
+  <button id="brandForget" hidden>Forget this brand</button>
+  <div id="brandResult" class="result" hidden></div>
 </section>
 
 <section>

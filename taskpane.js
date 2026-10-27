@@ -48,22 +48,13 @@ Office.onReady(async (info) => {
   reportSupport();
   try {
     BRAND = await loadBrand();
-    $('client').textContent = BRAND.client + (BRAND.profile ? ` \u00b7 ${BRAND.profile}` : '')
-      + (BRAND.fromAddIn ? ' \u00b7 not yet in this document' : '');
-    if (BRAND.profile) {
-      const opt = document.querySelector('#scope option[value="profile"]');
-      if (opt) opt.textContent = `Always in ${BRAND.profile} documents`;
-    }
-    drawBrand();
-    fillRoles();
   } catch (e) {
-    $('client').textContent = 'No brand in this document';
-    $('apply').disabled = true;
-    show('applyResult', 'This document carries no brand',
-      '<p>The brand travels inside the document, not with the add-in, so a document the engine ' +
-      'has not built has nothing to read.</p>' +
-      `<p class="quiet">${esc(e.message)}</p>`);
+    BRAND = null;
   }
+  renderBrand();
+  fillRoles();
+  if ($('brandFile')) $('brandFile').onchange = onBrandFile;
+  if ($('brandForget')) $('brandForget').onclick = onBrandForget;
   $('apply').onclick = applyBrand;
   if ($('design')) $('design').onclick = design;
   $('inspect').onclick = inspect;
@@ -73,19 +64,67 @@ Office.onReady(async (info) => {
 });
 
 /* The brand and the reasoning come out of the document's own custom XML part. */
+/* Three places a brand can come from, in this order:
+ *
+ *   the document   written by the engine, and the only one that also carries the reasoning
+ *   this machine   loaded once by hand and kept in the add-in's own storage, so every document
+ *                  after the first opens with it already there
+ *   the host       a copy served next to the add-in, if whoever deployed it chose to put one
+ *                  there. This host is public, so none is committed.
+ *
+ * The middle one is why the pane does not ask on every document. localStorage belongs to the
+ * add-in on this machine: it never reaches the document, the host, or anybody else.
+ */
+const MEMORY_KEY = 'branddoc.brand';
+
 async function loadBrand() {
   try {
-    return await brandFromDocument();
-  } catch (e) {
-    // A draft the engine has not built carries no part. Fall back to the brand bundled with the
-    // add-in so the pane is useful on an unformatted document, and say which one is in play.
-    const res = await fetch('brand.json', { cache: 'no-store' });
-    if (!res.ok) throw e;
-    const b = await res.json();
-    if (!b || !b.styles) throw e;
-    b.fromAddIn = true;
+    const b = await brandFromDocument();
+    b.source = 'document';
     return b;
+  } catch (e) {
+    const remembered = brandFromMemory();
+    if (remembered) return remembered;
+    const served = await brandFromHost();
+    if (served) return served;
+    throw e;
   }
+}
+
+function brandFromMemory() {
+  let raw = null;
+  try { raw = localStorage.getItem(MEMORY_KEY); } catch { return null; }
+  if (!raw) return null;
+  try {
+    const b = JSON.parse(raw);
+    if (!b || !Array.isArray(b.styles) || !b.styles.length) return null;
+    b.source = 'memory';
+    return b;
+  } catch { return null; }
+}
+
+function rememberBrand(b) {
+  try {
+    localStorage.setItem(MEMORY_KEY, JSON.stringify(b));
+    return true;
+  } catch {
+    return false;      // private window, or storage turned off
+  }
+}
+
+function forgetBrand() {
+  try { localStorage.removeItem(MEMORY_KEY); } catch { /* nothing to do */ }
+}
+
+async function brandFromHost() {
+  try {
+    const res = await fetch('brand.json', { cache: 'no-store' });
+    if (!res.ok) return null;
+    const b = await res.json();
+    if (!b || !Array.isArray(b.styles) || !b.styles.length) return null;
+    b.source = 'host';
+    return b;
+  } catch { return null; }
 }
 
 async function brandFromDocument() {
@@ -123,6 +162,69 @@ function reportSupport() {
 }
 
 /* ------------------------------------------------------------------ brand */
+const SOURCE_TEXT = {
+  document: 'From this document. It carries its own brand, and the reasoning behind every '
+            + 'paragraph in it.',
+  memory:   'Remembered on this Mac. It is not in this document yet \u2014 Apply writes the styles in.',
+  host:     'Served with the add-in. It is not in this document yet \u2014 Apply writes the styles in.',
+};
+
+function renderBrand() {
+  const has = !!(BRAND && BRAND.styles);
+  const set = (id, prop, value) => { const el = $(id); if (el) el[prop] = value; };
+  set('apply', 'disabled', !has);
+  set('design', 'disabled', !has);
+  set('brandForget', 'hidden', !(BRAND && BRAND.source === 'memory'));
+
+  if (!has) {
+    set('client', 'textContent', 'No brand loaded');
+    set('brandSource', 'textContent', 'Nothing to format with yet. Load a brand file below, or '
+      + 'open a document the engine has already built.');
+    set('palette', 'innerHTML', '');
+    set('fonts', 'innerHTML', '');
+    return;
+  }
+  set('client', 'textContent', BRAND.client + (BRAND.profile ? ` \u00b7 ${BRAND.profile}` : ''));
+  set('brandSource', 'textContent', SOURCE_TEXT[BRAND.source] || '');
+  if (BRAND.profile) {
+    const opt = document.querySelector('#scope option[value="profile"]');
+    if (opt) opt.textContent = `Always in ${BRAND.profile} documents`;
+  }
+  drawBrand();
+}
+
+async function onBrandFile(ev) {
+  const file = ev.target.files && ev.target.files[0];
+  if (!file) return;
+  try {
+    const b = JSON.parse(await file.text());
+    if (!b || !Array.isArray(b.styles) || !b.styles.length) {
+      throw new Error('That file has no styles in it.');
+    }
+    b.source = 'memory';
+    BRAND = b;
+    const kept = rememberBrand(b);
+    renderBrand();
+    show('brandResult', kept ? 'Loaded and remembered' : 'Loaded, but not remembered',
+      kept
+        ? `<p><strong>${esc(b.client || 'This brand')}</strong> with ${b.styles.length} styles. `
+          + 'Every document you open from now on starts with it already here.</p>'
+        : '<p>This Word build would not let the add-in keep it, so it lasts only while the pane '
+          + 'is open. Nothing is wrong with the file.</p>');
+  } catch (e) {
+    show('brandResult', 'Could not read that file', `<p>${esc(e.message)}</p>`);
+  } finally {
+    ev.target.value = '';
+  }
+}
+
+function onBrandForget() {
+  forgetBrand();
+  BRAND = null;
+  renderBrand();
+  show('brandResult', 'Forgotten', '<p>Nothing of it is left on this Mac.</p>');
+}
+
 function drawBrand() {
   $('palette').innerHTML = Object.entries(BRAND.palette).map(([name, hex]) =>
     `<div class="swatch"><div class="chip" style="background:#${hex}"></div><span>${esc(name)}</span></div>`
@@ -277,9 +379,9 @@ function showPlan(blocks) {
       + byRole.map(([k, v]) => `<li>${v} &times; ${esc(k)} \u2014 ${esc(BrandDocApply.NEEDS_ENGINE[k] || 'no style mapped')}</li>`).join('')
       + '</ul>';
   }
-  if (BRAND && BRAND.fromAddIn) {
-    html += '<p class="quiet">The styles themselves are not in this document yet. '
-      + 'Apply the brand first, or this will have nothing to set.</p>';
+  if (BRAND && BRAND.source !== 'document') {
+    html += '<p class="quiet">These styles are not in this document yet. Apply the brand first, '
+      + 'or there will be nothing for this to set.</p>';
   }
   html += '<button id="designGo" class="primary">Set these styles</button>';
   show('designResult', 'The plan', html);
