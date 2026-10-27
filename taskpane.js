@@ -15,7 +15,7 @@
  * It carries no client data. The brand and the decision log ride inside the .docx as a custom
  * XML part, because serving them from the add-in's web host would mean publishing a client's
  * unreleased brand system and, since every decision quotes the text it was made about, excerpts
- * of a document marked Strictly Confidential. The document is already the confidential thing;
+ * of the confidential document itself. The document is already the confidential thing;
  * anyone who can open it can already read it. It also means a second client's document simply
  * brings its own brand.
  *
@@ -49,6 +49,10 @@ Office.onReady(async (info) => {
   try {
     BRAND = await loadBrand();
     $('client').textContent = BRAND.client + (BRAND.profile ? ` \u00b7 ${BRAND.profile}` : '');
+    if (BRAND.profile) {
+      const opt = document.querySelector('#scope option[value="profile"]');
+      if (opt) opt.textContent = `Always in ${BRAND.profile} documents`;
+    }
     drawBrand();
     fillRoles();
   } catch (e) {
@@ -253,12 +257,18 @@ function fillRoles() {
   $('newRole').innerHTML = ROLES.map((r) => `<option value="${r}">${r}</option>`).join('');
 }
 
-const SCOPE_FILE = {
-  exception: '02_Clients/OConnor/exceptions',
-  profile: '02_Clients/OConnor/profiles/PPM',
-  brand: '02_Clients/OConnor/brand',
-  core: '01_Core-System/validation/Layout-Checks.md',
-};
+/* Which of the four levels a correction belongs to. The client and profile names come from the
+   document's payload, so this file names no client -- it is published, and the document is not. */
+function scopeFile(scope) {
+  const c = (BRAND && BRAND.clientKey) || (BRAND && BRAND.client) || 'Client';
+  const p = (BRAND && BRAND.profile) || 'Profile';
+  return {
+    exception: `02_Clients/${c}/exceptions`,
+    profile: `02_Clients/${c}/profiles/${p}`,
+    brand: `02_Clients/${c}/brand`,
+    core: '01_Core-System/validation/Layout-Checks.md',
+  }[scope];
+}
 
 async function record() {
   if (!LAST) return;
@@ -275,7 +285,7 @@ async function record() {
   await writeLog(log);
   $('because').value = '';
   show('recordResult', 'Recorded',
-    `<p>Kept with this document. It belongs in <strong>${esc(SCOPE_FILE[entry.scope])}</strong>.</p>` +
+    `<p>Kept with this document. It belongs in <strong>${esc(scopeFile(entry.scope))}</strong>.</p>` +
     '<p class="quiet">The add-in cannot write to the repository from inside Word, so this waits ' +
     'here until it is folded into the rules.</p>');
   await drawLog();
@@ -300,7 +310,7 @@ async function drawLog() {
   const log = await readLog();
   $('log').innerHTML = log.length
     ? log.map((e) => `<li><strong>${esc(e.was || '?')} → ${esc(e.should)}</strong>` +
-        `<div class="where">${esc(SCOPE_FILE[e.scope])}</div>` +
+        `<div class="where">${esc(scopeFile(e.scope))}</div>` +
         (e.because ? `<div>${esc(e.because)}</div>` : '') +
         `<div class="where">“${esc(e.text.slice(0, 60))}”</div></li>`).join('')
     : '<li class="empty">None yet.</li>';
@@ -309,7 +319,7 @@ async function drawLog() {
 async function copyLog() {
   const log = await readLog();
   const text = log.map((e) =>
-    `- ${e.was || '?'} -> ${e.should} [${SCOPE_FILE[e.scope]}]\n  "${e.text}"\n` +
+    `- ${e.was || '?'} -> ${e.should} [${scopeFile(e.scope)}]\n  "${e.text}"\n` +
     (e.because ? `  because: ${e.because}\n` : '')).join('\n');
   try {
     await navigator.clipboard.writeText(text || '(nothing recorded)');

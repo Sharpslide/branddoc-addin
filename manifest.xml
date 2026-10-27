@@ -25,7 +25,7 @@
   <HighResolutionIconUrl DefaultValue="https://sharpslide.github.io/branddoc-addin/assets/icon-64.png"/>
   <SupportUrl DefaultValue="https://sharpslide.github.io/branddoc-addin/"/>
   <AppDomains>
-    <AppDomain>https://sharpslide.github.io</AppDomain>
+    <AppDomain>https://sharpslide.github.io/branddoc-addin</AppDomain>
   </AppDomains>
   <Hosts>
     <Host Name="Document"/>

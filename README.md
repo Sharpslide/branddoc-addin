@@ -25,7 +25,7 @@ namespace `urn:sharpslide:branddoc:1`. `docparts.brand_part` in the engine write
 
 That is deliberate. Serving them from the add-in's web host would publish a client's unreleased
 brand system, and because every decision quotes the text it was made about, excerpts of a document
-whose own footer reads *Strictly Confidential*. The document is already the confidential thing —
+marked confidential. The document is already the confidential thing —
 anyone who can open it can already read every word. It also means a second client's document
 simply brings its own brand, which is how this has to work anyway.
 
@@ -60,7 +60,7 @@ A style sheet that quietly applied two thirds of itself would be worse than one 
 ## Corrections
 
 Inspect a paragraph, say what it should have been, and choose how far the correction goes — a
-one-off here, always in PPMs, always for O'Connor, always. That is the four-level separation, so
+one-off here, always for this document type, always for this client, always. That is the four-level separation, so
 each correction knows which file it belongs in.
 
 They are kept in the document's own settings for now, because an add-in cannot write to the
