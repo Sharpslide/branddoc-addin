@@ -56,7 +56,9 @@ h2 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--ink); }
 
 .fonts { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 12px; }
 .fonts dt { color: var(--muted); }
-.fonts dd { margin: 0; }
+.fonts dd { margin: 0; font-size: 14px; line-height: 1.3; }
+.fonts dd.absent { color: var(--faint); font-style: italic; }
+.fonts dd.absent::after { content: " \2014 not on this machine"; font: 11px/1 var(--ui); font-style: normal; }
 
 #brandLoad { margin-top: 10px; }
 input[type="file"] { width: 100%; font: inherit; font-size: 11px; color: var(--muted); }

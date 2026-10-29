@@ -270,8 +270,37 @@ function drawBrand() {
   const seen = new Set(roles.map(([k]) => k));
   const rows = roles.filter(([k]) => BRAND.fonts[k]).map(([k, label]) => [label, BRAND.fonts[k]])
     .concat(Object.entries(BRAND.fonts).filter(([k]) => !seen.has(k)));
-  $('fonts').innerHTML = rows.map(([label, v]) =>
-    `<dt>${esc(label)}</dt><dd>${esc(v)}</dd>`).join('');
+  // Each face is named in itself, which also shows at a glance whether it is on this machine:
+  // a name that falls back to the UI font is a face Word cannot set either.
+  $('fonts').innerHTML = rows.map(([label, v]) => {
+    const here = fontAvailable(v);
+    const family = `'${String(v).replace(/'/g, '')}', var(--ui)`;
+    return `<dt>${esc(label)}</dt>`
+      + `<dd${here ? '' : ' class="absent"'} style="font-family:${family}"`
+      + ` title="${esc(v)}${here ? '' : ' \u2014 not installed on this machine'}">${esc(v)}</dd>`;
+  }).join('');
+}
+
+/* Is a typeface actually on this machine? Set a probe string in the face with a fallback behind
+   it, and in the fallback alone. Same width means the face never resolved. document.fonts.check
+   is not reliable for system faces, which is what these are. */
+const FONT_SEEN = new Map();
+function fontAvailable(name) {
+  if (FONT_SEEN.has(name)) return FONT_SEEN.get(name);
+  let found = false;
+  try {
+    const probe = 'mmmmmmmmmmlliWWWWWW';
+    const c = document.createElement('canvas').getContext('2d');
+    const clean = String(name).replace(/['"\\]/g, '');
+    for (const fallback of ['monospace', 'sans-serif', 'serif']) {
+      c.font = '72px ' + fallback;
+      const plain = c.measureText(probe).width;
+      c.font = `72px '${clean}', ${fallback}`;
+      if (Math.abs(c.measureText(probe).width - plain) > 0.5) { found = true; break; }
+    }
+  } catch { found = false; }
+  FONT_SEEN.set(name, found);
+  return found;
 }
 
 /* ------------------------------------------------------------------ apply */
