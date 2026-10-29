@@ -22,67 +22,62 @@
   <div id="palette" class="swatches"></div>
   <dl id="fonts" class="fonts"></dl>
   <div id="brandLoad">
-    <label for="brandFile" class="hint">Load a brand file. This add-in remembers it on this Mac,
-      so you only do it once.</label>
-    <input type="file" id="brandFile" accept="application/json,.json">
+    <input type="file" id="brandFile" accept="application/json,.json"
+           title="Load a brand file. It is remembered on this machine, so you only do this once. It never leaves your machine.">
   </div>
-  <button id="brandForget" hidden>Forget this brand</button>
+  <button id="brandForget" hidden
+          title="Remove the remembered brand from this machine.">Forget this brand</button>
   <div id="brandResult" class="result" hidden></div>
 </section>
 
 <section>
   <h2>Apply</h2>
-  <p class="hint">Writes the brand's styles into this document. Existing styles are redefined;
-    missing ones are created. Your text is not touched.</p>
-  <button id="apply" class="primary">Apply brand to this document</button>
+  <button id="apply" class="primary"
+          title="Writes the brand's styles into this document. Styles already here are redefined, missing ones are created. Your text is not touched.">Apply brand to this document</button>
   <div id="applyResult" class="result" hidden></div>
 </section>
 
 <section>
   <h2>Design</h2>
-  <p class="hint">Reads the draft, works out what every paragraph is, and sets the style that
-    carries it. It shows you the plan first, and nothing changes until you say so. Your words are
-    not rewritten.</p>
-  <button id="design">Design this document</button>
+  <button id="design"
+          title="Reads the draft, works out what every paragraph is, and sets the style that carries it. Shows you the plan first — nothing changes until you confirm. Your words are never rewritten.">Design this document</button>
   <div id="designResult" class="result" hidden></div>
 </section>
 
 <section>
   <h2>Why this?</h2>
-  <p class="hint">Put the cursor in a paragraph and ask. If the engine formatted this document,
-    it will say what it decided and why.</p>
-  <button id="inspect">What is this?</button>
+  <button id="inspect"
+          title="Put the cursor in a paragraph first. If the engine formatted this document, this says what it decided and why.">What is this?</button>
   <div id="inspectResult" class="result" hidden></div>
 </section>
 
 <section id="correctSection" hidden>
   <h2>Correct it</h2>
   <label for="newRole">This should be</label>
-  <select id="newRole"></select>
+  <select id="newRole" title="What this paragraph actually is, if the engine read it wrongly."></select>
   <label for="scope">How far does this go?</label>
-  <select id="scope">
+  <select id="scope" title="Which of the four levels the correction belongs to: this document only, this kind of document, this client, or every document.">
     <option value="exception">Just here — a one-off in this document</option>
     <option value="profile">Always in PPMs</option>
     <option value="brand">Always for this client</option>
     <option value="core">Always, in every document</option>
   </select>
-  <label for="because">Because <span class="opt">(optional, but it becomes the rule)</span></label>
+  <label for="because">Because <span class="opt">(optional — it becomes the rule)</span></label>
   <textarea id="because" rows="3" placeholder="e.g. a line in capitals above a table is a table title only when the table follows immediately"></textarea>
-  <button id="record" class="primary">Record this correction</button>
+  <button id="record" class="primary"
+          title="Keeps the correction with this document until it is folded into the rules.">Record this correction</button>
   <div id="recordResult" class="result" hidden></div>
 </section>
 
 <section>
-  <h2>Corrections recorded</h2>
-  <p class="hint">Kept with this document until they are folded into the rules. Each one shows
-    where it would apply.</p>
-  <ol id="log" class="log"><li class="empty">None yet.</li></ol>
-  <button id="copyLog">Copy all as text</button>
+  <h2>Corrections</h2>
+  <ol id="log" class="log" title="Kept with this document until they are folded into the rules. Each one shows where it would apply."><li class="empty">None yet.</li></ol>
+  <button id="copyLog"
+          title="Copy every correction as text, to paste wherever the rules get written.">Copy all as text</button>
 </section>
 
 <footer>
-  <p>Prototype. The engine still runs outside Word; this panel reads and writes the styles and
-    keeps your corrections.</p>
+  <p>Prototype</p>
 </footer>
 
 <script src="engine/blocks.js"></script>

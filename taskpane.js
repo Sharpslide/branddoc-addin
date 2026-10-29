@@ -169,9 +169,42 @@ const SOURCE_TEXT = {
   host:     'Served with the add-in. It is not in this document yet \u2014 Apply writes the styles in.',
 };
 
+/* The one thing the pane takes from the client: an accent colour. Everything else stays in
+   Office's own greys, so the tool never competes with the document it is making. With no brand
+   loaded the accent stays grey, which tells you as much as any message would. */
+function paintAccent(brand) {
+  const root = document.documentElement.style;
+  const palette = brand && brand.palette;
+  if (!palette) {
+    for (const v of ['--accent', '--accent-ink', '--accent-soft']) root.removeProperty(v);
+    return;
+  }
+  const pick = (...keys) => {
+    for (const k of keys) if (palette[k]) return '#' + String(palette[k]).replace(/^#/, '');
+    return null;
+  };
+  const accent = pick('ACCENT', 'PRIMARY', 'BLUE', 'NAVY', 'BLACK');
+  const soft = pick('LBLUE', 'XLGRAY', 'LGRAY');
+  if (accent) {
+    root.setProperty('--accent', accent);
+    root.setProperty('--accent-ink', readableOn(accent));
+  }
+  if (soft) root.setProperty('--accent-soft', soft);
+}
+
+/* Black or white, whichever stays legible on the accent. */
+function readableOn(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  if (!isFinite(n)) return '#ffffff';
+  const lin = (v) => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+  const L = 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
+  return L > 0.45 ? '#1b1b1b' : '#ffffff';
+}
+
 function renderBrand() {
   const has = !!(BRAND && BRAND.styles);
   const set = (id, prop, value) => { const el = $(id); if (el) el[prop] = value; };
+  paintAccent(has ? BRAND : null);
   set('apply', 'disabled', !has);
   set('design', 'disabled', !has);
   set('brandForget', 'hidden', !(BRAND && BRAND.source === 'memory'));
@@ -226,12 +259,19 @@ function onBrandForget() {
 }
 
 function drawBrand() {
+  // Token names are the engine's, not the client's. Underscores become spaces so a long one
+  // wraps between words instead of through them.
   $('palette').innerHTML = Object.entries(BRAND.palette).map(([name, hex]) =>
-    `<div class="swatch"><div class="chip" style="background:#${hex}"></div><span>${esc(name)}</span></div>`
+    `<div class="swatch"><div class="chip" style="background:#${esc(hex)}"></div>`
+    + `<span title="#${esc(hex)}">${esc(name.replace(/_/g, ' '))}</span></div>`
   ).join('');
-  const role = { G: 'Display', SL: 'Text', R: 'Labels', SB: 'Emphasis' };
-  $('fonts').innerHTML = Object.entries(BRAND.fonts).map(([k, v]) =>
-    `<dt>${esc(role[k] || k)}</dt><dd>${esc(v)}</dd>`).join('');
+  // Display first, then the text faces, whatever order the payload happens to be in.
+  const roles = [['G', 'Display'], ['SL', 'Text'], ['R', 'Labels'], ['SB', 'Emphasis']];
+  const seen = new Set(roles.map(([k]) => k));
+  const rows = roles.filter(([k]) => BRAND.fonts[k]).map(([k, label]) => [label, BRAND.fonts[k]])
+    .concat(Object.entries(BRAND.fonts).filter(([k]) => !seen.has(k)));
+  $('fonts').innerHTML = rows.map(([label, v]) =>
+    `<dt>${esc(label)}</dt><dd>${esc(v)}</dd>`).join('');
 }
 
 /* ------------------------------------------------------------------ apply */

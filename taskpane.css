@@ -1,93 +1,133 @@
-/* The task pane borrows the document's own palette and voice: tracked caps for labels,
-   Light Gray hairlines between blocks, Blue for anything active. */
+/* The pane is the tool, not the document.
+ *
+ * It stays in Office's own voice — Office UI font, neutral greys, plain sentence case — and takes
+ * exactly one thing from the client: an accent colour, set at runtime from the brand's palette.
+ * With no brand loaded the accent is grey too, which is a useful signal in itself.
+ *
+ * What a control does lives in its tooltip rather than a paragraph under it, so the pane reads as
+ * a list of things you can do rather than an explanation of itself.
+ */
 :root {
-  --black: #1A1A1A;
-  --blue: #3A6682;
-  --gray: #707070;
-  --lblue: #CFDAE0;
-  --lgray: #D9D9D9;
-  --xlgray: #EDEDED;
-  --bg: #FFFFFF;
-  --sans: "Bahnschrift SemiLight", "Bahnschrift", -apple-system, "Segoe UI", system-ui, sans-serif;
+  /* Office UI: San Francisco on a Mac, Segoe UI on Windows. */
+  --ui: -apple-system, BlinkMacSystemFont, "Segoe UI", "Segoe UI Web (West European)",
+        Roboto, "Helvetica Neue", sans-serif;
+
+  --bg: #ffffff;
+  --ink: #1b1b1b;
+  --muted: #616161;
+  --faint: #8a8a8a;
+  --border: #d1d1d1;
+  --hairline: #ebebeb;
+  --surface: #f5f5f5;
+
+  /* Replaced from the brand's palette when one is loaded. Grey until then. */
+  --accent: #4b4b4b;
+  --accent-ink: #ffffff;
+  --accent-soft: #ebebeb;
 }
 
 * { box-sizing: border-box; }
 
 body {
   margin: 0;
-  padding: 0 16px 24px;
+  padding: 0 16px 20px;
   background: var(--bg);
-  color: var(--black);
-  font: 13px/1.45 var(--sans);
+  color: var(--ink);
+  font: 13px/1.45 var(--ui);
   -webkit-font-smoothing: antialiased;
 }
 
-header { padding: 18px 0 14px; border-bottom: 2px solid var(--lgray); }
-h1 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; color: var(--blue); }
-.client { margin: 4px 0 0; font-size: 12px; color: var(--gray); }
+header { padding: 16px 0 12px; border-bottom: 1px solid var(--border); }
+h1 { margin: 0; font-size: 15px; font-weight: 600; color: var(--ink); }
+.client { margin: 3px 0 0; font-size: 12px; color: var(--muted); }
 
-section { padding: 18px 0; border-bottom: 1px solid var(--lgray); }
+section { padding: 16px 0; border-bottom: 1px solid var(--hairline); }
 section:last-of-type { border-bottom: 0; }
 
-h2 { margin: 0 0 8px; font-size: 11px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: var(--blue); }
+h2 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--ink); }
 
-.hint { margin: 0 0 12px; font-size: 12px; color: var(--gray); }
+.hint { margin: 0 0 10px; font-size: 12px; color: var(--muted); }
 
 /* ---------------------------------------------------------------- brand */
-.swatches { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 14px; }
+.swatches { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 12px; }
 .swatch { text-align: center; }
-.chip { height: 30px; border: 1px solid var(--lgray); border-radius: 2px; }
-.swatch span { display: block; margin-top: 4px; font-size: 9px; letter-spacing: .06em; color: var(--gray); overflow-wrap: anywhere; }
+.chip { height: 26px; border: 1px solid var(--border); border-radius: 3px; }
+.swatch span { display: block; margin-top: 3px; font-size: 9px; color: var(--faint); overflow-wrap: anywhere; }
 
 .fonts { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 12px; }
-.fonts dt { color: var(--gray); }
+.fonts dt { color: var(--muted); }
 .fonts dd { margin: 0; }
+
+#brandLoad { margin-top: 10px; }
+input[type="file"] { width: 100%; font: inherit; font-size: 11px; color: var(--muted); }
+input[type="file"]::file-selector-button {
+  font: inherit; font-size: 12px; padding: 5px 10px; margin-right: 8px;
+  color: var(--ink); background: var(--bg);
+  border: 1px solid var(--border); border-radius: 4px; cursor: pointer;
+}
+input[type="file"]::file-selector-button:hover { background: var(--surface); }
 
 /* ---------------------------------------------------------------- controls */
 button {
-  width: 100%; padding: 9px 12px; margin-top: 4px;
-  font: inherit; font-size: 12px; letter-spacing: .04em;
-  color: var(--black); background: var(--bg);
-  border: 1px solid var(--blue); border-radius: 2px; cursor: pointer;
+  width: 100%; padding: 8px 12px; margin-top: 6px;
+  font: inherit; font-size: 13px;
+  color: var(--ink); background: var(--bg);
+  border: 1px solid var(--border); border-radius: 4px; cursor: pointer;
 }
-button:hover { background: var(--xlgray); }
-button.primary { color: #fff; background: var(--blue); }
-button.primary:hover { background: #2E5470; }
-button:disabled { opacity: .5; cursor: default; }
+button:hover:not(:disabled) { background: var(--surface); }
+button.primary { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
+button.primary:hover:not(:disabled) { filter: brightness(1.12); }
+button:disabled { opacity: .45; cursor: default; }
+button:focus-visible, select:focus-visible, textarea:focus-visible,
+input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
-label { display: block; margin: 12px 0 4px; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--gray); }
-label .opt { text-transform: none; letter-spacing: 0; }
+label { display: block; margin: 12px 0 4px; font-size: 12px; color: var(--muted); }
+label .opt { color: var(--faint); }
 select, textarea {
-  width: 100%; padding: 7px 8px; font: inherit; font-size: 12px;
-  color: var(--black); background: var(--bg);
-  border: 1px solid var(--lgray); border-radius: 2px;
+  width: 100%; padding: 6px 8px; font: inherit; font-size: 13px;
+  color: var(--ink); background: var(--bg);
+  border: 1px solid var(--border); border-radius: 4px;
 }
 textarea { resize: vertical; }
 
 /* ---------------------------------------------------------------- results */
-.result { margin-top: 12px; padding: 10px 12px; font-size: 12px; background: var(--xlgray); border-left: 2px solid var(--blue); }
-.result h3 { margin: 0 0 6px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--blue); }
+.result {
+  margin-top: 10px; padding: 10px 12px; font-size: 12px;
+  background: var(--surface); border-left: 3px solid var(--accent); border-radius: 0 4px 4px 0;
+}
+.result h3 { margin: 0 0 6px; font-size: 12px; font-weight: 600; color: var(--ink); }
 .result p { margin: 0 0 6px; }
 .result p:last-child { margin-bottom: 0; }
-.result .quiet { color: var(--gray); }
+.result .quiet { color: var(--muted); }
 .result ul { margin: 6px 0 0; padding-left: 16px; }
 .result li { margin-bottom: 3px; }
 
-.notice { margin: 14px 0 0; padding: 10px 12px; font-size: 12px; background: #FBF4E6; border-left: 2px solid #B8860B; }
+.notice {
+  margin: 12px 0 0; padding: 10px 12px; font-size: 12px;
+  background: #fdf6e7; border-left: 3px solid #b8860b; border-radius: 0 4px 4px 0;
+}
+.notice ul { margin: 6px 0 0; padding-left: 16px; }
 
 .log { margin: 0; padding-left: 18px; font-size: 12px; }
 .log li { margin-bottom: 8px; }
-.log .empty { list-style: none; margin-left: -18px; color: var(--gray); }
-.log .where { color: var(--gray); font-size: 11px; }
+.log .empty { list-style: none; margin-left: -18px; color: var(--muted); }
+.log .where { color: var(--faint); font-size: 11px; }
 
-footer { padding-top: 16px; font-size: 11px; color: var(--gray); }
+footer { padding-top: 14px; font-size: 11px; color: var(--faint); }
 footer p { margin: 0; }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #1A1A1A; --black: #EDEDED; --gray: #9AA7AE;
-    --lgray: #3A4147; --xlgray: #24292E; --blue: #8FB3C7;
+    --bg: #1f1f1f;
+    --ink: #f0f0f0;
+    --muted: #a6a6a6;
+    --faint: #8a8a8a;
+    --border: #3d3d3d;
+    --hairline: #2e2e2e;
+    --surface: #282828;
+    --accent: #9a9a9a;
+    --accent-ink: #1f1f1f;
+    --accent-soft: #2e2e2e;
   }
-  :root:not([data-theme="light"]) .notice { background: #2B2415; }
-  :root:not([data-theme="light"]) button.primary { color: #10202B; }
+  :root:not([data-theme="light"]) .notice { background: #2b2415; }
 }
