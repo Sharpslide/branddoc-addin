@@ -51,17 +51,137 @@ Office.onReady(async (info) => {
   } catch (e) {
     BRAND = null;
   }
+  DOC = await readDocumentFacts();
   renderBrand();
+  renderHome();
   fillRoles();
   if ($('brandFile')) $('brandFile').onchange = onBrandFile;
   if ($('brandForget')) $('brandForget').onclick = onBrandForget;
-  $('apply').onclick = applyBrand;
-  if ($('design')) $('design').onclick = design;
+  if ($('apply')) $('apply').onclick = applyBrand;
   $('inspect').onclick = inspect;
   $('record').onclick = record;
   $('copyLog').onclick = copyLog;
+  $('back').onclick = back;
+  $('brandRow').onclick = () => go('brand');
+  $('goWhy').onclick = () => go('why');
+  $('goLog').onclick = () => go('log');
+  go('home');
   await drawLog();
 });
+
+/* ------------------------------------------------------------------ panes */
+/* One pane at a time with a back arrow, rather than one scroll with everything competing. The
+   header carries the title, so a pane does not repeat its own name. */
+const PANE_TITLE = { home: 'BrandDoc', brand: 'Brand', why: 'Why this?', log: 'Corrections' };
+let TRAIL = [];
+
+function go(name) {
+  if (TRAIL[TRAIL.length - 1] !== name) TRAIL.push(name);
+  paint();
+}
+
+function back() {
+  if (TRAIL.length > 1) TRAIL.pop();
+  paint();
+}
+
+function paint() {
+  const name = TRAIL[TRAIL.length - 1] || 'home';
+  for (const pane of document.querySelectorAll('.pane')) {
+    pane.hidden = pane.dataset.pane !== name;
+  }
+  $('title').textContent = PANE_TITLE[name] || 'BrandDoc';
+  $('back').hidden = TRAIL.length < 2;
+  $('client').textContent = name === 'home' ? clientLine() : '';
+  window.scrollTo(0, 0);
+}
+
+function clientLine() {
+  if (!BRAND || !BRAND.styles) return 'No brand loaded';
+  return BRAND.client + (BRAND.profile ? ` \u00b7 ${BRAND.profile}` : '');
+}
+
+/* ------------------------------------------------------------------ the document */
+let DOC = null;
+
+async function readDocumentFacts() {
+  const facts = { name: null, paragraphs: null };
+  try {
+    const url = Office.context.document.url;
+    if (url) facts.name = String(url).split(/[\\/]/).pop();
+  } catch { /* unsaved, or the host does not expose it */ }
+  try {
+    await Word.run(async (context) => {
+      const ps = context.document.body.paragraphs;
+      ps.load('items');
+      await context.sync();
+      facts.paragraphs = ps.items.length;
+    });
+  } catch { /* leave it unknown rather than guess */ }
+  return facts;
+}
+
+/* ------------------------------------------------------------------ home */
+/* Only PPM exists. The other two are named because they are the shape of the thing, and shown
+   as not built rather than hidden, so nobody demos a button that does nothing. */
+const FORMATS = [
+  { key: 'PPM', name: 'Memorandum', desc: 'Print memorandum. Full style set, figures and section dividers.' },
+  { key: 'Whitepaper', name: 'Whitepaper', desc: 'For screens. Wider measure, no dividers.' },
+  { key: 'Letter', name: 'Letter', desc: 'Letterhead, with heading and body styles only.' },
+];
+
+function renderHome() {
+  const f = DOC || {};
+  const fromDoc = !!(BRAND && BRAND.source === 'document');
+  const rows = [`<div class="doc-name">${esc(f.name || 'This document')}</div>`];
+  if (f.paragraphs != null) {
+    rows.push(`<div class="doc-line">${f.paragraphs} paragraph${f.paragraphs === 1 ? '' : 's'}</div>`);
+  }
+  rows.push('<div class="doc-line faint">' + (fromDoc
+    ? 'Formatted by BrandDoc. It carries its own brand and the reasoning behind every paragraph.'
+    : 'Not formatted by BrandDoc yet.') + '</div>');
+  $('docCard').innerHTML = rows.join('');
+  renderFormats();
+  renderBrandRow();
+}
+
+function renderBrandRow() {
+  const has = !!(BRAND && BRAND.styles);
+  $('brandRowName').textContent = has ? BRAND.client : 'No brand loaded';
+  const f = (BRAND && BRAND.fonts) || {};
+  const faces = [f.G, f.SL || f.R].filter(Boolean);
+  const seen = [];
+  for (const x of faces) if (!seen.includes(x)) seen.push(x);
+  $('brandRowSub').textContent = has
+    ? seen.join(' \u00b7 ') + ` \u00b7 ${Object.keys(BRAND.palette || {}).length} colours`
+    : 'Load one to format with';
+  const p = (BRAND && BRAND.palette) || {};
+  const stub = ['BLACK', 'BLUE', 'LBLUE'].map((k) => p[k]).filter(Boolean);
+  $('brandStub').innerHTML = (stub.length ? stub : ['d1d1d1', 'b8b8b8', 'ebebeb'])
+    .map((hex) => `<i style="background:#${esc(hex)}"></i>`).join('');
+}
+
+function renderFormats() {
+  const profile = BRAND && BRAND.styles ? BRAND.profile : null;
+  $('formats').innerHTML = FORMATS.map((f) => {
+    const ready = !!profile && f.key === profile;
+    // With no brand loaded we do not know which profiles exist, so say that rather than
+    // calling a profile unbuilt when it is only unloaded.
+    const tag = ready ? '<span class="tag">Ready</span>'
+      : `<span class="tag quiet">${profile ? 'Not built yet' : 'Needs a brand'}</span>`;
+    const tip = ready
+      ? 'Reads the draft, works out what every paragraph is, and sets the styles. You see the plan before anything changes.'
+      : (profile ? 'This profile has not been built yet.'
+                 : 'Load a brand first — it says which formats it carries.');
+    return `<button class="format${ready ? ' current' : ''}" data-profile="${esc(f.key)}"`
+      + `${ready ? '' : ' disabled'} title="${esc(tip)}">`
+      + `<span class="fmt-head"><span class="fmt-name">${esc(f.name)}</span>${tag}</span>`
+      + `<span class="fmt-desc">${esc(f.desc)}</span></button>`;
+  }).join('');
+  for (const b of $('formats').querySelectorAll('button[data-profile]')) {
+    b.onclick = () => design();
+  }
+}
 
 /* The brand and the reasoning come out of the document's own custom XML part. */
 /* Three places a brand can come from, in this order:
@@ -184,12 +304,23 @@ function paintAccent(brand) {
     return null;
   };
   const accent = pick('ACCENT', 'PRIMARY', 'BLUE', 'NAVY', 'BLACK');
-  const soft = pick('LBLUE', 'XLGRAY', 'LGRAY');
   if (accent) {
     root.setProperty('--accent', accent);
     root.setProperty('--accent-ink', readableOn(accent));
+    // A wash of the accent itself, not whichever light colour the palette happens to carry: a
+    // brand's own "light blue" is usually far too strong behind text.
+    root.setProperty('--accent-soft', mixWithPaper(accent, 0.10));
   }
-  if (soft) root.setProperty('--accent-soft', soft);
+}
+
+/* The accent at `amount` strength over the page, as a flat hex. */
+function mixWithPaper(hex, amount) {
+  const dark = matchMedia && matchMedia('(prefers-color-scheme: dark)').matches;
+  const paper = dark ? 0x1f : 0xff;
+  const n = parseInt(hex.slice(1), 16);
+  const mix = (v) => Math.round(v * amount + paper * (1 - amount));
+  const out = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(mix);
+  return '#' + out.map((v) => v.toString(16).padStart(2, '0')).join('');
 }
 
 /* Black or white, whichever stays legible on the accent. */
@@ -208,16 +339,17 @@ function renderBrand() {
   set('apply', 'disabled', !has);
   set('design', 'disabled', !has);
   set('brandForget', 'hidden', !(BRAND && BRAND.source === 'memory'));
+  if ($('brandRowName')) renderBrandRow();
+  if ($('formats')) renderFormats();
+  if ($('title')) paint();
 
   if (!has) {
-    set('client', 'textContent', 'No brand loaded');
     set('brandSource', 'textContent', 'Nothing to format with yet. Load a brand file below, or '
       + 'open a document the engine has already built.');
     set('palette', 'innerHTML', '');
     set('fonts', 'innerHTML', '');
     return;
   }
-  set('client', 'textContent', BRAND.client + (BRAND.profile ? ` \u00b7 ${BRAND.profile}` : ''));
   set('brandSource', 'textContent', SOURCE_TEXT[BRAND.source] || '');
   if (BRAND.profile) {
     const opt = document.querySelector('#scope option[value="profile"]');
@@ -306,13 +438,9 @@ function fontAvailable(name) {
 /* ------------------------------------------------------------------ apply */
 const ALIGN = { left: 'Left', right: 'Right', center: 'Centered', both: 'Justified' };
 
-async function applyBrand() {
-  if (!SUPPORT.styles) {
-    return show('applyResult', 'Not supported here',
-      '<p>This build of Word cannot write styles through the add-in API (it needs WordApi 1.5).</p>');
-  }
-  $('apply').disabled = true;
-  $('apply').textContent = 'Applying…';
+/* Writing the style definitions in. Separated from the button that used to be its only caller,
+   because formatting a document needs this first and the user should not have to know that. */
+async function writeStyles() {
   const made = [], changed = [], failed = [], skipped = new Set();
   try {
     await Word.run(async (context) => {
@@ -342,18 +470,35 @@ async function applyBrand() {
   } catch (e) {
     failed.push(e.message);
   }
-  $('apply').disabled = false;
-  $('apply').textContent = 'Apply brand to this document';
+  return { made, changed, failed, skipped };
+}
 
-  let html = `<p><strong>${changed.length} styles redefined, ${made.length} created.</strong></p>`;
-  if (skipped.size) {
-    html += '<p class="quiet">Not applied, because this Word build or the add-in API cannot set them:</p><ul>' +
-      [...skipped].map((s) => `<li>${esc(s)}</li>`).join('') + '</ul>';
+function stylesSummary(r) {
+  let html = `<p><strong>${r.changed.length} styles redefined, ${r.made.length} created.</strong></p>`;
+  if (r.skipped.size) {
+    html += '<p class="quiet">Not applied, because this Word build or the add-in API cannot set them:</p><ul>'
+      + [...r.skipped].map((x) => `<li>${esc(x)}</li>`).join('') + '</ul>';
   }
-  if (failed.length) {
-    html += '<p class="quiet">Failed:</p><ul>' + failed.slice(0, 8).map((f) => `<li>${esc(f)}</li>`).join('') + '</ul>';
+  if (r.failed.length) {
+    html += '<p class="quiet">Failed:</p><ul>'
+      + r.failed.slice(0, 8).map((f) => `<li>${esc(f)}</li>`).join('') + '</ul>';
   }
-  show('applyResult', 'Result', html);
+  return html;
+}
+
+async function applyBrand() {
+  if (!SUPPORT.styles) {
+    return show('applyResult', 'Not supported here',
+      '<p>This build of Word cannot write styles through the add-in API (it needs WordApi 1.5).</p>');
+  }
+  const btn = $('apply');
+  const label = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Writing\u2026';
+  const r = await writeStyles();
+  btn.disabled = false;
+  btn.textContent = label;
+  show('applyResult', 'Result', stylesSummary(r));
 }
 
 function applyRun(style, rec, skipped) {
@@ -449,10 +594,11 @@ function showPlan(blocks) {
       + '</ul>';
   }
   if (BRAND && BRAND.source !== 'document') {
-    html += '<p class="quiet">These styles are not in this document yet. Apply the brand first, '
-      + 'or there will be nothing for this to set.</p>';
+    html += `<p class="quiet">The ${BRAND.styles.length} style definitions are not in this `
+      + 'document yet, so they go in first.</p>';
   }
-  html += '<button id="designGo" class="primary">Set these styles</button>';
+  const alsoStyles = BRAND && BRAND.source !== 'document';
+  html += `<button id="designGo" class="primary">${alsoStyles ? 'Write the styles and format it' : 'Format it'}</button>`;
   show('designResult', 'The plan', html);
   $('designGo').onclick = designGo;
 }
@@ -461,6 +607,16 @@ async function designGo() {
   if (!PLAN) return;
   const go = $('designGo');
   go.disabled = true;
+
+  // Setting a paragraph to a style that is not in the document yet does nothing useful, so the
+  // definitions go in first. The user asked to format a document, not to understand that there
+  // are two steps.
+  let styles = null;
+  if (BRAND && BRAND.source !== 'document' && SUPPORT.styles) {
+    go.textContent = 'Writing the styles\u2026';
+    styles = await writeStyles();
+  }
+
   go.textContent = 'Setting\u2026';
   let result = null;
   try {
@@ -474,7 +630,15 @@ async function designGo() {
     show('designResult', 'Stopped', `<p>${esc(e.message)}</p>`);
     return;
   }
-  let html = `<p><strong>${result.applied.length} paragraphs styled.</strong></p>`;
+  let html = '';
+  if (styles) {
+    html += `<p>${styles.changed.length} styles redefined, ${styles.made.length} created.</p>`;
+  }
+  html += `<p><strong>${result.applied.length} paragraphs styled.</strong></p>`;
+  if (styles && styles.skipped.size) {
+    html += '<p class="quiet">This Word build could not set:</p><ul>'
+      + [...styles.skipped].map((x) => `<li>${esc(x)}</li>`).join('') + '</ul>';
+  }
   if (result.failed.length) {
     const why = tally(result.failed, 'error');
     html += `<p class="quiet">${result.failed.length} could not be set:</p><ul>`
@@ -584,6 +748,10 @@ function writeLog(log) {
 
 async function drawLog() {
   const log = await readLog();
+  if ($('logCount')) {
+    $('logCount').textContent = log.length
+      ? `${log.length} recorded` : 'None recorded';
+  }
   $('log').innerHTML = log.length
     ? log.map((e) => `<li><strong>${esc(e.was || '?')} → ${esc(e.should)}</strong>` +
         `<div class="where">${esc(scopeFile(e.scope))}</div>` +

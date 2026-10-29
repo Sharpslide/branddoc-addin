@@ -72,10 +72,12 @@ window.Word = {
   await page.route('**/office.js', r => r.fulfill({ contentType: 'application/javascript', body: OFFICE_STUB }));
 
   const read = async () => ({
+    pane: await page.getAttribute('.pane:not([hidden])', 'data-pane'),
     client: await page.textContent('#client'),
     source: (await page.textContent('#brandSource') || '').trim().slice(0, 70),
     applyDisabled: await page.getAttribute('#apply', 'disabled') !== null,
-    designDisabled: await page.getAttribute('#design', 'disabled') !== null,
+    formatsReady: await page.locator('button.format:not([disabled])').count(),
+    brandRow: (await page.textContent('#brandRowName') || '').trim(),
     forgetHidden: await page.getAttribute('#brandForget', 'hidden') !== null,
     swatches: await page.locator('#palette .swatch').count()
   });
@@ -97,7 +99,10 @@ window.Word = {
   const reopened = await read();
   console.log('next document   ', JSON.stringify(reopened));
 
-  // 4. forget it
+  // 4. forget it — the control lives on the Brand pane, so go there first
+  await page.click('#brandRow');
+  await page.waitForTimeout(200);
+  console.log('brand pane     ', JSON.stringify({ pane: await page.getAttribute('.pane:not([hidden])', 'data-pane') }));
   await page.click('#brandForget');
   await page.waitForTimeout(200);
   await page.goto(base + '/taskpane.html', { waitUntil: 'networkidle' });
@@ -106,7 +111,8 @@ window.Word = {
 
   await browser.close();
   server.close();
-  const ok = reopened.client.includes('Connor') && !reopened.applyDisabled && !reopened.designDisabled;
+  const ok = reopened.client.includes('Connor') && !reopened.applyDisabled
+    && reopened.formatsReady === 1 && reopened.brandRow.includes('Connor');
   if (errs.length) { console.log('\nconsole errors:'); errs.slice(0,5).forEach(e => console.log('  ' + e)); }
   console.log(ok && !errs.length
     ? '\nPASS — loaded once, still there on the next document, and cleanly forgotten.'

@@ -10,75 +10,129 @@
 <body>
 
 <header>
-  <h1>BrandDoc</h1>
-  <p class="client" id="client">Reading the document…</p>
+  <button id="back" class="icon" hidden title="Back" aria-label="Back">&#8249;</button>
+  <div class="titles">
+    <h1 id="title">BrandDoc</h1>
+    <p class="client" id="client"></p>
+  </div>
 </header>
 
 <div id="support" class="notice" hidden></div>
 
-<section>
-  <h2>Brand</h2>
-  <p id="brandSource" class="hint"></p>
-  <div id="palette" class="swatches"></div>
-  <dl id="fonts" class="fonts"></dl>
-  <div id="brandLoad">
-    <input type="file" id="brandFile" accept="application/json,.json"
-           title="Load a brand file. It is remembered on this machine, so you only do this once. It never leaves your machine.">
-  </div>
-  <button id="brandForget" hidden
-          title="Remove the remembered brand from this machine.">Forget this brand</button>
-  <div id="brandResult" class="result" hidden></div>
-</section>
+<main>
 
-<section>
-  <h2>Apply</h2>
-  <button id="apply" class="primary"
-          title="Writes the brand's styles into this document. Styles already here are redefined, missing ones are created. Your text is not touched.">Apply brand to this document</button>
-  <div id="applyResult" class="result" hidden></div>
-</section>
+<!-- ------------------------------------------------------------------ home -->
+<div class="pane" data-pane="home">
 
-<section>
-  <h2>Design</h2>
-  <button id="design"
-          title="Reads the draft, works out what every paragraph is, and sets the style that carries it. Shows you the plan first — nothing changes until you confirm. Your words are never rewritten.">Design this document</button>
-  <div id="designResult" class="result" hidden></div>
-</section>
+  <section>
+    <h2>Document</h2>
+    <div id="docCard" class="card"></div>
+  </section>
 
-<section>
-  <h2>Why this?</h2>
-  <button id="inspect"
-          title="Put the cursor in a paragraph first. If the engine formatted this document, this says what it decided and why.">What is this?</button>
-  <div id="inspectResult" class="result" hidden></div>
-</section>
+  <section>
+    <h2>Brand</h2>
+    <button id="brandRow" class="row"
+            title="Which brand this document is set to. Opens the palette and typefaces.">
+      <span id="brandStub" class="stub" aria-hidden="true"></span>
+      <span class="row-text">
+        <span id="brandRowName" class="row-title">No brand loaded</span>
+        <span id="brandRowSub" class="row-sub"></span>
+      </span>
+      <span class="chev" aria-hidden="true">&#8250;</span>
+    </button>
+  </section>
 
-<section id="correctSection" hidden>
-  <h2>Correct it</h2>
-  <label for="newRole">This should be</label>
-  <select id="newRole" title="What this paragraph actually is, if the engine read it wrongly."></select>
-  <label for="scope">How far does this go?</label>
-  <select id="scope" title="Which of the four levels the correction belongs to: this document only, this kind of document, this client, or every document.">
-    <option value="exception">Just here — a one-off in this document</option>
-    <option value="profile">Always in PPMs</option>
-    <option value="brand">Always for this client</option>
-    <option value="core">Always, in every document</option>
-  </select>
-  <label for="because">Because <span class="opt">(optional — it becomes the rule)</span></label>
-  <textarea id="because" rows="3" placeholder="e.g. a line in capitals above a table is a table title only when the table follows immediately"></textarea>
-  <button id="record" class="primary"
-          title="Keeps the correction with this document until it is folded into the rules.">Record this correction</button>
-  <div id="recordResult" class="result" hidden></div>
-</section>
+  <section>
+    <h2>Format as</h2>
+    <div id="formats"></div>
+    <div id="designResult" class="result" hidden></div>
+  </section>
 
-<section>
-  <h2>Corrections</h2>
-  <ol id="log" class="log" title="Kept with this document until they are folded into the rules. Each one shows where it would apply."><li class="empty">None yet.</li></ol>
-  <button id="copyLog"
-          title="Copy every correction as text, to paste wherever the rules get written.">Copy all as text</button>
-</section>
+  <section>
+    <h2>Also</h2>
+    <button id="goWhy" class="row" title="Put the cursor in a paragraph and ask what it is and why.">
+      <span class="row-text"><span class="row-title">Why is this paragraph like this?</span></span>
+      <span class="chev" aria-hidden="true">&#8250;</span>
+    </button>
+    <button id="goLog" class="row" title="Every correction recorded against this document.">
+      <span class="row-text"><span class="row-title">Corrections</span>
+        <span id="logCount" class="row-sub"></span></span>
+      <span class="chev" aria-hidden="true">&#8250;</span>
+    </button>
+  </section>
 
-<footer>
-  <p>Prototype</p>
-</footer>
+</div>
+
+<!-- ------------------------------------------------------------------ brand -->
+<div class="pane" data-pane="brand" hidden>
+
+  <section>
+    <p id="brandSource" class="hint"></p>
+    <div id="palette" class="swatches"></div>
+    <dl id="fonts" class="fonts"></dl>
+  </section>
+
+  <section>
+    <h2>Where it comes from</h2>
+    <div id="brandLoad">
+      <input type="file" id="brandFile" accept="application/json,.json"
+             title="Load a brand file. It is remembered on this machine, so you only do this once. It never leaves your machine.">
+    </div>
+    <button id="brandForget" hidden
+            title="Remove the remembered brand from this machine.">Forget this brand</button>
+    <div id="brandResult" class="result" hidden></div>
+  </section>
+
+  <section>
+    <h2>Styles only</h2>
+    <button id="apply"
+            title="Writes the brand's style definitions into this document without touching which paragraph uses which. For a document someone has already formatted by hand.">Write the styles into this document</button>
+    <div id="applyResult" class="result" hidden></div>
+  </section>
+
+</div>
+
+<!-- ------------------------------------------------------------------ why -->
+<div class="pane" data-pane="why" hidden>
+
+  <section>
+    <button id="inspect" class="primary"
+            title="Put the cursor in a paragraph first. If the engine formatted this document, this says what it decided and why.">What is this paragraph?</button>
+    <div id="inspectResult" class="result" hidden></div>
+  </section>
+
+  <section id="correctSection" hidden>
+    <h2>Correct it</h2>
+    <label for="newRole">This should be</label>
+    <select id="newRole" title="What this paragraph actually is, if the engine read it wrongly."></select>
+    <label for="scope">How far does this go?</label>
+    <select id="scope" title="Which of the four levels the correction belongs to: this document only, this kind of document, this client, or every document.">
+      <option value="exception">Just here — a one-off in this document</option>
+      <option value="profile">Always in PPMs</option>
+      <option value="brand">Always for this client</option>
+      <option value="core">Always, in every document</option>
+    </select>
+    <label for="because">Because <span class="opt">(optional — it becomes the rule)</span></label>
+    <textarea id="because" rows="3" placeholder="e.g. a line in capitals above a table is a table title only when the table follows immediately"></textarea>
+    <button id="record" class="primary"
+            title="Keeps the correction with this document until it is folded into the rules.">Record this correction</button>
+    <div id="recordResult" class="result" hidden></div>
+  </section>
+
+</div>
+
+<!-- ------------------------------------------------------------------ log -->
+<div class="pane" data-pane="log" hidden>
+  <section>
+    <ol id="log" class="log"><li class="empty">None yet.</li></ol>
+    <button id="copyLog"
+            title="Copy every correction as text, to paste wherever the rules get written.">Copy all as text</button>
+  </section>
+</div>
+
+</main>
+
+<footer><p id="status"></p></footer>
 
 <script src="engine/blocks.js"></script>
 <script src="engine/classify.js"></script>

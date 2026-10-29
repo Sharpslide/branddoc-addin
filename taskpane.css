@@ -37,12 +37,24 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-header { padding: 16px 0 12px; border-bottom: 1px solid var(--border); }
+header {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 14px 0 12px; border-bottom: 1px solid var(--border);
+}
+.titles { min-width: 0; }
 h1 { margin: 0; font-size: 15px; font-weight: 600; color: var(--ink); }
-.client { margin: 3px 0 0; font-size: 12px; color: var(--muted); }
+.client { margin: 2px 0 0; font-size: 12px; color: var(--muted); }
 
-section { padding: 16px 0; border-bottom: 1px solid var(--hairline); }
-section:last-of-type { border-bottom: 0; }
+button.icon {
+  width: auto; margin: 0; padding: 2px 7px 4px;
+  font-size: 17px; line-height: 1.1; color: var(--muted);
+  border: 1px solid transparent; background: none; border-radius: 4px;
+}
+button.icon:hover:not(:disabled) { background: var(--surface); color: var(--ink); }
+
+section { padding: 14px 0; border-bottom: 1px solid var(--hairline); }
+.pane > section:last-of-type { border-bottom: 0; }
+.pane[hidden] { display: none; }
 
 h2 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--ink); }
 
@@ -133,3 +145,56 @@ footer p { margin: 0; }
   }
   :root:not([data-theme="light"]) .notice { background: #2b2415; }
 }
+
+/* ---------------------------------------------------------------- cards and rows */
+.card {
+  padding: 11px 12px; border-radius: 6px; background: var(--surface);
+  font-size: 12px;
+}
+.card .doc-name { font-size: 13px; font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
+.card .doc-line { margin-top: 3px; color: var(--muted); }
+.card .doc-line.faint { color: var(--faint); }
+
+/* A tappable row: something on the left, a chevron on the right. */
+button.row {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; margin: 0; padding: 10px 11px;
+  text-align: left; font: inherit; font-size: 13px;
+  color: var(--ink); background: var(--bg);
+  border: 1px solid var(--border); border-radius: 6px; cursor: pointer;
+}
+button.row + button.row { margin-top: 6px; }
+button.row:hover:not(:disabled) { background: var(--surface); }
+.row-text { flex: 1; min-width: 0; }
+.row-title { display: block; }
+.row-sub { display: block; margin-top: 1px; font-size: 11px; color: var(--muted); overflow-wrap: anywhere; }
+.chev { color: var(--faint); font-size: 16px; line-height: 1; }
+
+/* The three colours that say which brand, without making you read six hex values. */
+.stub { display: flex; gap: 2px; flex: 0 0 auto; }
+.stub i { display: block; width: 6px; height: 22px; border-radius: 2px; }
+
+/* ---------------------------------------------------------------- formats */
+button.format {
+  display: block; width: 100%; margin: 0 0 6px; padding: 10px 12px;
+  text-align: left; font: inherit;
+  color: var(--ink); background: var(--bg);
+  border: 1px solid var(--border); border-radius: 6px; cursor: pointer;
+}
+button.format:last-child { margin-bottom: 0; }
+button.format:hover:not(:disabled) { background: var(--surface); }
+button.format .fmt-head { display: flex; align-items: center; gap: 8px; }
+button.format .fmt-name { font-size: 13px; font-weight: 600; }
+button.format .fmt-desc { display: block; margin-top: 2px; font-size: 11px; color: var(--muted); }
+button.format.current { border-color: var(--accent); background: var(--accent-soft); }
+button.format:disabled { opacity: 1; color: var(--faint); cursor: default; background: var(--bg); }
+button.format:disabled .fmt-name { color: var(--faint); }
+
+.tag {
+  padding: 1px 6px; border-radius: 3px;
+  font-size: 9px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--accent-ink); background: var(--accent);
+}
+.tag.quiet { color: var(--muted); background: var(--hairline); }
+
+#status { min-height: 14px; }
