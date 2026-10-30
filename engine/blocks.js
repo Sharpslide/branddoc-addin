@@ -99,6 +99,10 @@
   }
 
   function parse(xml, parser) {
+    if (!xml || !String(xml).trim()) {
+      throw new Error('Word returned nothing for this document. If it has just opened, give it a '
+                      + 'moment and try again.');
+    }
     const p = parser || (s => new DOMParser().parseFromString(s, 'application/xml'));
     const doc = p(xml);
     const err = doc.getElementsByTagName('parsererror')[0];

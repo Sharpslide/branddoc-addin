@@ -99,6 +99,17 @@ window.Word = {
   const reopened = await read();
   console.log('next document   ', JSON.stringify(reopened));
 
+  // 3b. the format button must actually do something. It once threw on its first line, before
+  // its own try block, because it looked up a button id that an earlier version of the pane had
+  // and this one does not — so a click did nothing and reported nothing.
+  const liveFormat = page.locator('button.format:not([disabled])').first();
+  await liveFormat.click();
+  await page.waitForTimeout(600);
+  const planShown = await page.getAttribute('#designResult', 'hidden') === null;
+  const planText = (await page.textContent('#designResult') || '').replace(/\s+/g, ' ').trim();
+  console.log('clicked format  ', JSON.stringify({ reacted: planShown, says: planText.slice(0, 72) }));
+  if (!planShown) errs.push('clicking a format button produced no response at all');
+
   // 4. forget it — the control lives on the Brand pane, so go there first
   await page.click('#brandRow');
   await page.waitForTimeout(200);
@@ -112,7 +123,7 @@ window.Word = {
   await browser.close();
   server.close();
   const ok = reopened.client.includes('Connor') && !reopened.applyDisabled
-    && reopened.formatsReady === 1 && reopened.brandRow.includes('Connor');
+    && reopened.formatsReady === 1 && reopened.brandRow.includes('Connor') && planShown;
   if (errs.length) { console.log('\nconsole errors:'); errs.slice(0,5).forEach(e => console.log('  ' + e)); }
   console.log(ok && !errs.length
     ? '\nPASS — loaded once, still there on the next document, and cleanly forgotten.'

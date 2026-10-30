@@ -179,7 +179,7 @@ function renderFormats() {
       + `<span class="fmt-desc">${esc(f.desc)}</span></button>`;
   }).join('');
   for (const b of $('formats').querySelectorAll('button[data-profile]')) {
-    b.onclick = () => design();
+    b.onclick = () => design(b);
   }
 }
 
@@ -441,7 +441,7 @@ const ALIGN = { left: 'Left', right: 'Right', center: 'Centered', both: 'Justifi
 /* Writing the style definitions in. Separated from the button that used to be its only caller,
    because formatting a document needs this first and the user should not have to know that. */
 async function writeStyles() {
-  const made = [], changed = [], failed = [], skipped = new Set();
+  const made = [], changed = [], failed = [], skipped = new Set(), notes = new Set();
   try {
     await Word.run(async (context) => {
       const styles = context.document.getStyles();
@@ -460,7 +460,7 @@ async function writeStyles() {
             changed.push(rec.name);
           }
           applyRun(style, rec, skipped);
-          if (rec.type !== 'character') applyPara(style, rec, skipped);
+          if (rec.type !== 'character') applyPara(style, rec, skipped, notes);
         } catch (e) {
           failed.push(`${rec.name}: ${e.message}`);
         }
@@ -470,11 +470,12 @@ async function writeStyles() {
   } catch (e) {
     failed.push(e.message);
   }
-  return { made, changed, failed, skipped };
+  return { made, changed, failed, skipped, notes };
 }
 
 function stylesSummary(r) {
   let html = `<p><strong>${r.changed.length} styles redefined, ${r.made.length} created.</strong></p>`;
+  for (const n of (r.notes || [])) html += `<p class="quiet">${esc(n)}</p>`;
   if (r.skipped.size) {
     html += '<p class="quiet">Not applied, because this Word build or the add-in API cannot set them:</p><ul>'
       + [...r.skipped].map((x) => `<li>${esc(x)}</li>`).join('') + '</ul>';
@@ -519,7 +520,7 @@ function applyRun(style, rec, skipped) {
   }
 }
 
-function applyPara(style, rec, skipped) {
+function applyPara(style, rec, skipped, notes) {
   const p = rec.paragraph || {};
   const pf = style.paragraphFormat;
   if (p.jc) pf.alignment = ALIGN[p.jc] || 'Left';
@@ -531,11 +532,18 @@ function applyPara(style, rec, skipped) {
   if (p.keep_next != null) pf.keepWithNext = p.keep_next;
   if (p.keep_lines != null) pf.keepTogether = p.keep_lines;
   if (p.widow != null) pf.widowControl = p.widow;
-  if (rec.leading) {
-    // The design asks for a Multiple, so the leading stays proportional if a size changes. The
-    // add-in API only exposes lineSpacing in points and gives no way to set the rule, so setting
-    // it here would pin the document to Exactly and quietly break that. Left to the engine.
-    skipped.add('line spacing (the API has no way to set a Multiple, only an exact value)');
+  if (rec.leading && rec.leading.target) {
+    // The design asks for a Multiple so the leading follows a change of size, and the API only
+    // exposes lineSpacing in points, which pins the paragraph to Exactly. Leaving it unset was
+    // worse: every styled paragraph fell back to Word's single spacing, which is visibly tighter
+    // than the design everywhere. So the target goes in as an exact value — it renders what the
+    // design asks for, and the engine still owns the Multiple.
+    pf.lineSpacing = rec.leading.target;
+    if (notes) {
+      notes.add('Line spacing is set as an exact value rather than a multiple, because the '
+                + 'add-in API cannot set the rule. It renders correctly but will not follow a '
+                + 'change of type size — a rebuild through the engine restores that.');
+    }
   }
   if (rec.borders && rec.borders.length && !SUPPORT.borders) {
     skipped.add('rules above and below the lead paragraph (style borders)');
@@ -549,10 +557,15 @@ function applyPara(style, rec, skipped) {
    else's document should never be a surprise. */
 let PLAN = null;
 
-async function design() {
-  const btn = $('design');
-  btn.disabled = true;
-  btn.textContent = 'Reading\u2026';
+async function design(btn) {
+  // The button is passed in: there is one per format, and an earlier version of this pane had a
+  // single #design button whose id this function still looked up. It returned null and threw on
+  // the first line, before the try, so a click did nothing at all and said nothing either.
+  const label = btn ? btn.innerHTML : null;
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Reading\u2026';
+  }
   try {
     await Word.run(async (context) => {
       const blocks = await BrandDocBlocks.fromDocument(context);
@@ -564,10 +577,13 @@ async function design() {
       showPlan(blocks);
     });
   } catch (e) {
-    show('designResult', 'Could not read this document', `<p>${esc(e.message)}</p>`);
+    show('designResult', 'Could not read this document',
+      `<p>${esc(e.message)}</p><p class="quiet">Nothing in the document was changed.</p>`);
   }
-  btn.disabled = false;
-  btn.textContent = 'Design this document';
+  if (btn) {
+    btn.disabled = false;
+    btn.innerHTML = label;
+  }
 }
 
 function tally(list, key) {
@@ -635,6 +651,7 @@ async function designGo() {
     html += `<p>${styles.changed.length} styles redefined, ${styles.made.length} created.</p>`;
   }
   html += `<p><strong>${result.applied.length} paragraphs styled.</strong></p>`;
+  for (const n of (styles && styles.notes) || []) html += `<p class="quiet">${esc(n)}</p>`;
   if (styles && styles.skipped.size) {
     html += '<p class="quiet">This Word build could not set:</p><ul>'
       + [...styles.skipped].map((x) => `<li>${esc(x)}</li>`).join('') + '</ul>';
