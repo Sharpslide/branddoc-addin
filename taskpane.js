@@ -626,9 +626,16 @@ function showPlan(blocks) {
       + '</ul>';
   }
   if (deletes.length) {
-    html += `<p><strong>${deletes.length} lines would be removed</strong> \u2014 the title block the `
-      + 'draft opens with, which the design replaces with a section title page:</p><ul>'
-      + deletes.map((d) => `<li>${esc(d.text)}</li>`).join('') + '</ul>';
+    // Removing someone's lines is worth naming one by one, up to the point where a list stops
+    // being read. Past that it is a wall of text pretending to be disclosure.
+    const SHOWN = 6;
+    html += `<p><strong>${deletes.length} line${deletes.length === 1 ? '' : 's'} would be `
+      + 'removed</strong> \u2014 the title block the draft opens with, which the design replaces '
+      + 'with a section title page:</p><ul>'
+      + deletes.slice(0, SHOWN).map((d) => `<li>${esc(d.text)}</li>`).join('')
+      + (deletes.length > SHOWN
+          ? `<li class="quiet">and ${deletes.length - SHOWN} more</li>` : '')
+      + '</ul>';
   }
   if (judged) {
     html += `<p class="quiet">${judged} of these are judgement calls rather than rules. `
