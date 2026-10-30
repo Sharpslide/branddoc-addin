@@ -173,13 +173,25 @@ function renderFormats() {
       ? 'Reads the draft, works out what every paragraph is, and sets the styles. You see the plan before anything changes.'
       : (profile ? 'This profile has not been built yet.'
                  : 'Load a brand first — it says which formats it carries.');
-    return `<button class="format${ready ? ' current' : ''}" data-profile="${esc(f.key)}"`
-      + `${ready ? '' : ' disabled'} title="${esc(tip)}">`
+    // Not disabled, even when it cannot run. A disabled button swallows the click and explains
+    // nothing, which is indistinguishable from the pane being broken. It stays clickable and
+    // says why instead.
+    return `<button class="format${ready ? ' current' : ''}${ready ? '' : ' waiting'}"`
+      + ` data-profile="${esc(f.key)}" data-ready="${ready ? '1' : ''}"`
+      + ` title="${esc(tip)}">`
       + `<span class="fmt-head"><span class="fmt-name">${esc(f.name)}</span>${tag}</span>`
       + `<span class="fmt-desc">${esc(f.desc)}</span></button>`;
   }).join('');
   for (const b of $('formats').querySelectorAll('button[data-profile]')) {
-    b.onclick = () => design(b);
+    b.onclick = () => {
+      if (b.dataset.ready) return design(b);
+      const key = b.dataset.profile;
+      show('designResult', 'Not yet', BRAND && BRAND.styles
+        ? `<p>The brand loaded is <strong>${esc(BRAND.profile)}</strong>, and ${esc(key)} has not `
+          + 'been built for this client yet. Only the loaded profile can run.</p>'
+        : '<p>No brand is loaded, so there is nothing to format with. Open <strong>Brand</strong> '
+          + 'and load a brand file — it only has to be done once on this machine.</p>');
+    };
   }
 }
 

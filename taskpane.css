@@ -187,8 +187,8 @@ button.format .fmt-head { display: flex; align-items: center; gap: 8px; }
 button.format .fmt-name { font-size: 13px; font-weight: 600; }
 button.format .fmt-desc { display: block; margin-top: 2px; font-size: 11px; color: var(--muted); }
 button.format.current { border-color: var(--accent); background: var(--accent-soft); }
-button.format:disabled { opacity: 1; color: var(--faint); cursor: default; background: var(--bg); }
-button.format:disabled .fmt-name { color: var(--faint); }
+button.format.waiting { color: var(--faint); }
+button.format.waiting .fmt-name { color: var(--faint); }
 
 .tag {
   padding: 1px 6px; border-radius: 3px;

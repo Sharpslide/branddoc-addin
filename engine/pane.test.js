@@ -76,7 +76,7 @@ window.Word = {
     client: await page.textContent('#client'),
     source: (await page.textContent('#brandSource') || '').trim().slice(0, 70),
     applyDisabled: await page.getAttribute('#apply', 'disabled') !== null,
-    formatsReady: await page.locator('button.format:not([disabled])').count(),
+    formatsReady: await page.locator('button.format[data-ready="1"]').count(),
     brandRow: (await page.textContent('#brandRowName') || '').trim(),
     forgetHidden: await page.getAttribute('#brandForget', 'hidden') !== null,
     swatches: await page.locator('#palette .swatch').count()
@@ -102,7 +102,7 @@ window.Word = {
   // 3b. the format button must actually do something. It once threw on its first line, before
   // its own try block, because it looked up a button id that an earlier version of the pane had
   // and this one does not — so a click did nothing and reported nothing.
-  const liveFormat = page.locator('button.format:not([disabled])').first();
+  const liveFormat = page.locator('button.format[data-ready="1"]').first();
   await liveFormat.click();
   await page.waitForTimeout(600);
   const planShown = await page.getAttribute('#designResult', 'hidden') === null;
