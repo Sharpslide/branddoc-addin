@@ -125,6 +125,8 @@
       if (i < firstStyled && st == null) {
         attach(b, 'Part of the title block the draft opens with, ahead of any styled paragraph. '
           + 'Dropped, because the design gives the section a title page instead.', 'D13a');
+        if (keepIndex) push(i, { role: 'drop', text: t, why: b.why, rule: 'D13a',
+                                 confidence: 'certain' });
         continue;
       }
       if (st === 'Heading1') {
