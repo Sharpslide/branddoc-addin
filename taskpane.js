@@ -609,9 +609,27 @@ function showPlan(blocks) {
   const byRole = tally(PLAN.unplaced, 'role');
   const judged = PLAN.steps.filter((s) => s.confidence === 'judgement').length;
 
+  const retypes = PLAN.steps.filter((s) => s.retype);
+  const deletes = PLAN.deletes || [];
+
   let html = `<p><strong>${PLAN.steps.length} of ${blocks.length} blocks would be styled.</strong>`
     + ` ${PLAN.paragraphs} paragraphs in the document.</p>`;
   html += '<ul>' + byStyle.map(([k, v]) => `<li>${v} &times; ${esc(k)}</li>`).join('') + '</ul>';
+
+  // Anything that changes the author's words is stated before it happens, never after.
+  if (retypes.length) {
+    html += `<p><strong>${retypes.length} headings would be retyped</strong> from capitals into `
+      + 'title case, which is how the approved design sets them:</p><ul>'
+      + retypes.slice(0, 4).map((s) =>
+          `<li>${esc(s.was)} <span class="quiet">\u2192</span> ${esc(s.retype)}</li>`).join('')
+      + (retypes.length > 4 ? `<li class="quiet">and ${retypes.length - 4} more</li>` : '')
+      + '</ul>';
+  }
+  if (deletes.length) {
+    html += `<p><strong>${deletes.length} lines would be removed</strong> \u2014 the title block the `
+      + 'draft opens with, which the design replaces with a section title page:</p><ul>'
+      + deletes.map((d) => `<li>${esc(d.text)}</li>`).join('') + '</ul>';
+  }
   if (judged) {
     html += `<p class="quiet">${judged} of these are judgement calls rather than rules. `
       + 'Ask "Why this?" on any paragraph afterwards and it will say which.</p>';
@@ -651,6 +669,7 @@ async function designGo() {
     await Word.run(async (context) => {
       result = await BrandDocApply.apply(context, PLAN.steps, {
         Word: Word,
+        deletes: PLAN.deletes,
         onProgress: (done, total) => { go.textContent = `Setting\u2026 ${done} of ${total}`; },
       });
     });
@@ -663,6 +682,12 @@ async function designGo() {
     html += `<p>${styles.changed.length} styles redefined, ${styles.made.length} created.</p>`;
   }
   html += `<p><strong>${result.applied.length} paragraphs styled.</strong></p>`;
+  if (result.retyped.length) {
+    html += `<p>${result.retyped.length} headings retyped into title case.</p>`;
+  }
+  if (result.removed.length) {
+    html += `<p>${result.removed.length} title-block lines removed.</p>`;
+  }
   for (const n of (styles && styles.notes) || []) html += `<p class="quiet">${esc(n)}</p>`;
   if (styles && styles.skipped.size) {
     html += '<p class="quiet">This Word build could not set:</p><ul>'

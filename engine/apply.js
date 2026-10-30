@@ -34,6 +34,30 @@
     tlbody:      { sides: ['Timeline Body Left', 'Timeline Body Right'] }
   };
 
+  /* Roles whose text the engine rewrites, and the pane should too.
+   *
+   * Decision D13: a heading the author typed in capitals is set in title case, because that is
+   * how the approved design shows it. Setting only the style leaves "THE FUND" at 30pt Garamond,
+   * which is not what anyone approved.
+   *
+   * Captions are deliberately absent. The engine strips "Exhibit N \u2014" from them only because
+   * it puts the number back as a SEQ field; the pane has no field to put back, so stripping it
+   * would lose the label altogether.
+   */
+  const RETYPE = new Set(['part', 'sectiontitle', 'h2', 'h3', 'h4', 'tabletitle', 'bioname',
+                          'principle']);
+
+  /* Replacing a paragraph's text replaces its runs, so it is only safe where no run carries
+   * anything the text does not: a footnote reference, or formatting that varies across the
+   * paragraph. */
+  function safeToRetype(block) {
+    const runs = (block && block.runs) || [];
+    if (runs.some(r => 'fn' in r || r.img)) return false;
+    const inked = runs.filter(r => (r.t || '').trim());
+    const shape = new Set(inked.map(r => `${!!r.b}|${!!r.i}|${r.sz || ''}|${r.va || ''}`));
+    return shape.size <= 1;
+  }
+
   /* Roles a paragraph style cannot express, with the reason. The engine still owns these. */
   const NEEDS_ENGINE = {
     sectiontitle:   'becomes a title page of its own',
@@ -64,10 +88,18 @@
   function plan(blocks, classified) {
     const idx = paragraphIndexOfBlock(blocks);
     const steps = [];
+    const deletes = [];
     const unplaced = [];
     const sides = {};
     for (const c of classified) {
       const role = c.role;
+      if (role === 'drop' && typeof c._i === 'number') {
+        const body = (c.text || '').trim();
+        deletes.push({ paragraph: idx.at[c._i], block: c._i,
+                       text: body || '(a picture, with no text of its own)',
+                       empty: !body, why: c.why, rule: c.rule });
+        continue;
+      }
       if (NEEDS_ENGINE[role]) {
         unplaced.push({ role: role, why: NEEDS_ENGINE[role], text: (c.text || '').slice(0, 60) });
         continue;
@@ -88,14 +120,21 @@
         name = spec.sides[((sides[k] || 1) - 1) % 2];
         builtIn = null;
       }
+      const block = blocks[c._i];
+      const current = ((block && block.text) || '').trim();
+      const wanted = typeof c.text === 'string' ? c.text : null;
+      const retype = (RETYPE.has(role) && wanted && wanted !== current && safeToRetype(block))
+        ? wanted : null;
       steps.push({
         paragraph: idx.at[c._i], block: c._i, role: role,
         style: name, builtIn: builtIn || null,
+        retype: retype,
+        was: retype ? current.slice(0, 60) : null,
         text: (c.text || (c.runs || []).map(r => r.t || '').join('')).slice(0, 60),
         why: c.why, confidence: c.confidence
       });
     }
-    return { steps: steps, unplaced: unplaced, paragraphs: idx.total };
+    return { steps: steps, deletes: deletes, unplaced: unplaced, paragraphs: idx.total };
   }
 
   function setStyle(paragraph, step, WordNS) {
@@ -115,7 +154,7 @@
     await context.sync();
     const items = paras.items;
 
-    const applied = [], failed = [];
+    const applied = [], failed = [], retyped = [], removed = [];
     for (let i = 0; i < steps.length; i += chunk) {
       const slice = steps.slice(i, i + chunk).filter(s => {
         if (items[s.paragraph]) return true;
@@ -140,8 +179,36 @@
       }
       if (o.onProgress) o.onProgress(Math.min(i + chunk, steps.length), steps.length);
     }
-    return { applied: applied, failed: failed };
+
+    // Text after styles: a heading the author typed in capitals is set in title case (D13).
+    for (const s of steps) {
+      if (!s.retype) continue;
+      const para = items[s.paragraph];
+      if (!para) continue;
+      try {
+        para.insertText(s.retype, 'Replace');
+        await context.sync();
+        retyped.push(s);
+      } catch (e) {
+        failed.push(Object.assign({}, s, { error: 'could not retype: ' + String((e && e.message) || e) }));
+      }
+    }
+
+    // Deletions last, and by held reference rather than index, because removing a paragraph
+    // renumbers everything after it.
+    for (const d of (o.deletes || [])) {
+      const para = items[d.paragraph];
+      if (!para) continue;
+      try {
+        para.delete();
+        await context.sync();
+        removed.push(d);
+      } catch (e) {
+        failed.push(Object.assign({}, d, { error: 'could not remove: ' + String((e && e.message) || e) }));
+      }
+    }
+    return { applied: applied, failed: failed, retyped: retyped, removed: removed };
   }
 
-  return { plan, apply, STYLES, NEEDS_ENGINE, paragraphIndexOfBlock };
+  return { plan, apply, STYLES, NEEDS_ENGINE, RETYPE, paragraphIndexOfBlock };
 });
